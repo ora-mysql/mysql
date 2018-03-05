@@ -1,0 +1,135 @@
+二进制包安装 （以下安装使用 mysql 社区版）
+
+官网下载二进制包
+
+
+操作系统版本：redhat 6.7
+mysql版本： 5.7.20
+
+1. 新建用户 & 用户组：
+[root@dbseeker u02]# groupadd -g 501 mysql
+[root@dbseeker u02]# useradd -u 501 -g mysql mysql
+[root@dbseeker u02]# id mysql
+uid=501(mysql) gid=501(mysql) groups=501(mysql)
+[root@dbseeker u02]# 
+[root@dbseeker u02]# passwd mysql
+Changing password for user mysql.
+New password: 
+BAD PASSWORD: The password is shorter than 8 characters
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+
+2. 分别新建程序文件目录 & 数据文件目录
+[root@dbseeker u02]# mkdir -p /u01/app
+[root@dbseeker u02]# mkdir -p /u02/data
+[root@dbseeker u02]# chown -R mysql:mysql /u01
+[root@dbseeker u02]# chown -R mysql:mysql /u02
+
+[root@dbseeker u02]# chmod -R 775 /u01
+[root@dbseeker u02]# chmod -R 775 /u02
+
+[root@dbseeker u02]# ls -ltr
+drwxrwxr-x.   3 mysql mysql   17 Oct 17 13:41 u01
+drwxrwxr-x.   3 mysql mysql   18 Oct 17 13:41 u02
+
+另：顺便配置下环境变量
+cat >>  .bash_profile
+PATH=$PATH:$HOME/bin:/usr/bin:/usr/share/mysql:/var/lib/mysql
+
+3. 解压二进制包，并且把解压后的文件move到数据库程序文件目录/u01/app
+[mysql@dbseeker ~]$ cd /mysql/
+[mysql@dbseeker mysql]$ ll
+total 626104
+-rw-rw-r-- 1 mysql mysql 641127384 Oct 17 13:51 mysql-5.7.20-linux-glibc2.12-x86_64.tar.gz
+[mysql@dbseeker mysql]$ tar -zxvf mysql-5.7.20-linux-glibc2.12-x86_64.tar.gz 
+
+[mysql@dbseeker mysql]$ mv /mysql/mysql-5.7.20-linux-glibc2.12-x86_64/* /u01/app
+
+
+4.  定制mysql配置文件
+
+[root@dbseeker u02]# vi /etc/my.cnf
+
+[mysqld]
+basedir=/u01/app
+datadir=/u02/data
+socket=/u02/data/mysql.sock
+user=mysql 
+# Disabling symbolic-links is recommended to prevent assorted security risks
+symbolic-links=0
+
+[client]
+socket=/u02/data/mysql.sock
+
+[mysqld_safe]
+log-error=/var/log/mysqld.log
+pid-file=/var/run/mysqld/mysqld.pid
+
+5. 开始安装   
+
+[mysql@dbseeker ~]$ /u01/app/bin/mysql_install_db --user=mysql --basedir=/u01/app/ --datadir=/u02/data/
+2017-10-17 15:26:49 [WARNING] mysql_install_db is deprecated. Please consider switching to mysqld --initialize
+2017-10-17 15:26:56 [WARNING] The bootstrap log isn't empty:
+2017-10-17 15:26:56 [WARNING] 2017-10-17T07:26:49.960478Z 0 [Warning] --bootstrap is deprecated. Please consider using --initialize instead
+
+版本变化：这个版本的mysql安装方法 mysql_install_db（mysql 5.6可正常使用）已经被废弃了，提示说要用mysqld --initialize
+
+[mysql@dbseeker ~]$ /u01/app/bin/mysqld --initialize --defaults-file=/etc/my.cnf --datadir=/u02/data --basedir=/u01/app --user=mysql
+2017-10-17T07:32:26.704288Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2017-10-17T07:32:26.705954Z 0 [ERROR] --initialize specified but the data directory has files in it. Aborting.
+2017-10-17T07:32:26.705994Z 0 [ERROR] Aborting
+版本变化：报了一个TIMESTAMP冲突，建议加上--explicit_defaults_for_timestamp 这个参数
+
+[mysql@dbseeker ~]$ /u01/app/bin/mysqld --initialize --datadir=/u02/data --basedir=/u01/app --user=mysql --explicit_defaults_for_timestamp
+2017-10-17T08:18:20.480002Z 0 [Warning] InnoDB: New log files created, LSN=45790
+2017-10-17T08:18:21.113139Z 0 [Warning] InnoDB: Creating foreign key constraint system tables.
+2017-10-17T08:18:21.189319Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: bcd4a73e-b313-11e7-b718-000c29c37395.
+2017-10-17T08:18:21.208632Z 0 [Warning] Gtid table is not ready to be used. Table 'mysql.gtid_executed' cannot be opened.
+2017-10-17T08:18:21.210434Z 1 [Note] A temporary password is generated for root@localhost: K%gE)q.91Efo
+
+6. 启动mysql服务
+[root] dbseeker :/etc/init.d ># cp /u01/app/support-files/mysql.server /etc/init.d/mysqld
+
+[root] dbseeker :/etc/init.d ># /etc/init.d/mysqld start
+Starting MySQL...                                          [  OK  ]
+
+7. 进入mysql，修改登录密码，开始使用mysql
+
+[mysql@demo ~]$ /u01/app/bin/mysql -u root -p
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 10
+Server version: 5.7.20
+
+Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> 
+mysql> alter user 'root'@'localhost' identified by 'root';
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> create database dbseeker;
+Query OK, 1 row affected (0.01 sec)
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| dbseeker           |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+5 rows in set (0.01 sec)
+
+mysql> use dbseeker;
+Database changed
+
+
+至此，mysql 5.7.20安装成功。
