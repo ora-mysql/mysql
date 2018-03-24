@@ -1,0 +1,172 @@
+mysql 常规操作
+
+########## 重启mysql
+/etc/init.d/mysqld restart 
+
+########## 连接到mysql
+mysql> mysql -u root -p
+
+########## 查看状态
+mysql> status  或者 \s
+
+########## 登录数据库
+mysql> use dbseeker;
+
+########## show命令
+mysql> show databases;
+mysql> show tables;
+
+########## 创建数据库
+mysql> create database dbseeker;
+
+########## 创建用户
+grant select,insert,delete,update on dbseeker.* to lok identified by 'lok';
+
+########## 用刚创建的用户连接特定数据库(dbseeker)
+mysql dbseeker -u lok -p
+
+mysql> create table employees (
+    -> empid int not null,
+    -> lastname varchar(30),
+    -> firstname varchar(30),
+    -> salary float,
+    -> primary key (empid));
+ERROR 1142 (42000): CREATE command denied to user 'lok'@'localhost' for table 'employees'
+
+########## 用root用户连接特定数据库(dbseeker)： 注意：要用root用户登录数据库来创建表
+
+mysql dbseeker -u root -p
+
+mysql> create table employees (
+    -> empid int not null,
+    -> lastname varchar(30),
+    -> firstname varchar(30),
+    -> salary float,
+    -> primary key (empid));
+Query OK, 0 rows affected (0.45 sec)
+
+########## 查看建表语句
+mysql> show create table employees;
+
+
+########## 清空表
+mysql> truncate table employees;
+
+########## 删除表
+mysql> drop table employees;
+
+
+########## 增
+insert into employees values (1,'liu','lok',30000);
+insert into employees values (2,'liu','dbseeker',30000);
+
+########## 删
+delete from employees where empid=1;
+
+########## 改
+update employees set empid=1 where empid=2;
+
+########## 查
+select * from employees where empid=1;
+
+########## 两种查询显示
+mysql> select * from employees where empid=1;
++-------+----------+-----------+--------+
+| empid | lastname | firstname | salary |
++-------+----------+-----------+--------+
+|     1 | liu      | dbseeker  |  30000 |
++-------+----------+-----------+--------+
+1 row in set (0.01 sec)
+
+mysql> select * from employees where empid=1 \G
+*************************** 1. row ***************************
+    empid: 1
+ lastname: liu
+firstname: dbseeker
+   salary: 30000
+1 row in set (0.00 sec)
+
+########## 建索引
+mysql> alter table employees add index idx_lastname (lastname);
+mysql> alter table employees add index idx_last_fisrt (lastname,firstname);
+
+########## 检查索引
+mysql> show index from employees;
+
+########## 删除索引
+mysql> alter table employees drop index idx_lastname;
+
+########## 数据保存方式，对比Oracle的数据文件
+
+[root@mysql dbseeker]# cat /etc/my.cnf 
+[mysqld]
+basedir=/u01/app
+datadir=/u02/data
+
+[root@mysql data]# pwd
+/u02/data
+
+[root@mysql data]# ll
+drwxr-x--- 2 mysql mysql     4096 Oct 18 17:41 dbseeker
+
+[root@mysql dbseeker]# ll
+-rw-r----- 1 mysql mysql   8674 Oct 18 17:39 employees.frm
+-rw-r----- 1 mysql mysql  98304 Oct 18 17:53 employees.ibd
+
+########## 删用户
+mysql> use mysql;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+
+
+mysql> select user,host from user;
++---------------+--------------+
+| user          | host         |
++---------------+--------------+
+| lok           | %            |
+| dbseeker      | 192.168.62.1 |
+| mysql.session | localhost    |
+| mysql.sys     | localhost    |
+| root          | localhost    |
++---------------+--------------+
+5 rows in set (0.00 sec)
+
+mysql> delete from user where user in ('lok','dbseeker');
+Query OK, 2 rows affected (0.00 sec)
+
+mysql> select user,host from user;
++---------------+-----------+
+| user          | host      |
++---------------+-----------+
+| mysql.session | localhost |
+| mysql.sys     | localhost |
+| root          | localhost |
++---------------+-----------+
+3 rows in set (0.00 sec)
+
+
+########## 使用 MySQL WorkBench 客户端访问远程mysql数据库
+1. 安装 WorkBench：
+https://dev.mysql.com/downloads/installer/
+需要 Microsoft .NET Framework 4.5 跟 Visual C++ Redistributable支持
+
+2. 配置连接
+允许用户dbseeker通过任何ip地址(也可限定客户端IP地址: 这里是192.168.62.1)，使用指定密码dbseeker进行连接，
+配置完后使用命令使配置生效：flush privileges;
+
+mysql> grant all privileges on mydb.* to dbseeker@'192.168.62.1' identified by 'dbseeker';
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+
+mysql> flush privileges;  
+Query OK, 0 rows affected (0.01 sec)
+
+另：（这种方式是任何ip）
+grant all privileges on mydb.* to dbseeker@'%' identified by 'dbseeker';
+
+另：用*.*可以通过WorkBench访问所有的监控
+grant all privileges on *.* to 'root'@'192.168.62.1' identified by '123456';
+
+
+

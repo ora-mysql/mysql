@@ -1,0 +1,168 @@
+
+RDBMS
+1. Oracle
+定位：商业，支持多平台
+       场景：单实例，RAC，ADG，OGG
+        另: 
+        Saas: Software-as-a-Service（软件即服务）
+        Paas: Platform-as-a-Service（平台即服务），即中间件
+        Iaas: Infrastructure-as-a-Service（基础设施即服务），有时候也叫做Hardware-as-a-Service
+        Daas: Data-as-a-Service
+
+水平拓展：sharding
+逻辑备份： exp/expdp  imp/impdp
+物理备份：RMAN
+
+2. MySQL
+定位：
+开源，支持多平台，
+互联网的标配数据库，OLTP在线事务使用MYSQL数据库，OLAP离线分析。
+
+分支：
+MySQL社区版：
+MySQL企业版：
+Percona：
+Mariadb：
+Drizzle：
+
+逻辑备份：mysqldump，source，mysql < 
+物理备份：mysqlbackup，innobackupex，xtrabackup
+
+高可用：
+master-slave主从复制(官方)
+innodb cluster（新版本）
+MHA（第三方）
+
+优势：
+MySQL水平拆分，扩大MySQL数据库的并发能力和吞吐量。
+
+存储引擎：
+innodb存储引擎：高并发，OLTP场景
+Tokudb存储引擎：高并发insert
+Inforbright存储引擎：离线OLAP查询
+
+3.  SQL Server
+定位：商业，Windows，目前已支持linux
+
+高可用：
+SQLServer AlwaysOn双活热备
+
+拓展：
+共享存储，通过硬件垂直升级来对数据库集群拓展
+
+
+
+
+4. Postgresql
+定位： 功能最强大的开源数据库
+
+使用：命令行，或者pgadmin图形工具，但是没有很好的监控平台
+
+逻辑备份： copy
+物理备份：pgdump，pgrestore
+
+高可用：
+master-standby（官方）
+Slony-I（第三方）
+
+水平拓展：
+修改源代码的postgres-XC实现
+
+5.  mariadb
+偏向于功能的完善，
+支持galera 同步、并行复制，hash join ，日志组提交
+
+
+nosql数据库
+1. MongoDB
+定位：
+开源，多平台，文档型nosql
+数据文件存储格式为BSON
+部署简单，不支持SQL语句，使用json管理数据库
+官方提供付费的监控系统
+
+逻辑备份：mongoexport/mongimport
+物理备份：基于oplog的mongodump/mongorestore
+
+高可用：
+master-slave主从复制，不推荐
+replicaset：推荐，故障转移，自动修复成员节点，读写分离
+
+水平拆分：
+将数据存储在sharding的各个节点，
+Sharding集群底层可以是mongodb单实例，也可以高可用的replicaSet复制集
+
+sharding架构：
+底层多个mongodb Shared Server
+config水平拆分配置库config server
+前端路由 route process
+
+适用场景：
+网站后台数据库：实话实说插入、更新与查询，实时复制和高伸缩性，更新迭代快、需求变更多、以对象为主的网站应用
+小文件系统：对于json文件，二进制数据，适合用mongodb进行存储和查询
+日志分析系统：对于数据量大的日志文件，IM会话消息记录，适合用mongodb来保存和查询；
+缓存系统：使用大量的内存，合理的设计可以满足缓存系统， 但目前缓存系统使用更多的方案是memcached和redis
+
+不适用的场景：
+高度事务性的系统：即传统的OLTP业务，nosql对事务性支持都不太好
+传统的统计分析应用：即传统的OLAP业务，需要高度优化的查询方式，mongodb支持不好
+使用SQL语句比较方便的业务：MongoDB是json类型的查询，但不支持SQL
+
+2. Redis
+定位：
+开源，linux，key-value键值型nosql
+简单稳定，全数据in-momory
+读写性能10w/s,
+用客户端redis-cli连接，用set,get,del进行数据管理，
+数据持久化，主从复制，高可用和分布式
+用命令监控，或者开源的图形工具cachecloud
+
+备份：
+直接备份成物理问价的RDB持久化，基于AOF日志的实时AOF持久化
+
+高可用：
+官方的 redis sentinel哨兵高可用集群
+
+扩展：
+官方基于分配槽的 redis cluster分布式集群
+
+适用场景：
+缓存
+基础消息队列系统
+排行榜系统
+计数器使用
+社交网站的点赞、粉丝、下拉刷新等应用；
+
+不适用场景：
+从数据规模角度：redis适合小的数据规模，大的数据不适合，可用SSDB替代
+从数据冷热角度：Redis使用存放热数据，不适合冷数据
+
+3.  HBASE
+定位：
+开源，linux平台，列存储
+海量数据存储，与Hadoop生态圈结合，
+执行速度快，读写性能10w/s,也是key-value的数据结构，
+部署复杂，依赖Hadoop，zookeeper组件，
+使用监控参考Redis
+
+备份：
+Hbase一般用作海量数据的仓库，本身通过多层副本来保证数据安全性，不用进行专门的备份
+
+高可用：
+HBASE集群依赖Hadoop，通过Hadoop HA实现高可用
+
+适用场景：
+简单数据写入和海量、结构简单数据查询的业务场景
+成为其他数据库备份和下沉的数据库
+
+不适用场景：
+对数据分析需求高，需要能够用sql实现分析需求的业务场景是不适合的
+单表数据库少于千万，HBASE反而没有优势，也不适用。
+
+
+总结：
+考虑稳定性：Oracle
+考虑成本与开源：Mysql
+拓展性高：nosql
+
+
